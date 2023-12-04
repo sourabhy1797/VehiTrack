@@ -2,34 +2,37 @@
 %% This is mainstream file for generating the 1 posteriors for 1 node in trajectory
 
 %% Main stream Code
-addpath('./Functions/');
+% addpath('./Functions/');
+addpath('../Functions/')
+addpath('../Dataset/')
+addpath('../HMM/')
 
-opts = detectImportOptions('./Dataset/smaller_nodes_rome.csv');
+opts = detectImportOptions('../Dataset/smaller_nodes_rome.csv');
 opts = setvartype(opts, 'osmid', 'int64');
 opts = setvartype(opts, 'x', 'double');
 opts = setvartype(opts, 'y', 'double');
-df_nodes = readtable('./Dataset/smaller_nodes_rome.csv', opts);
-df_nodes_big = readtable('./Dataset/nodes_rome.csv', opts);
-df_edges = readtable('./Dataset/edges_rome.csv');
+df_nodes = readtable('../Dataset/smaller_nodes_rome.csv', opts);
+df_nodes_big = readtable('../Dataset/nodes_rome.csv', opts);
+df_edges = readtable('../Dataset/edges_rome.csv');
 
-load('.\Dataset\rome_taxicab\traject_coord_approx.mat');
-load('.\Dataset\rome_taxicab\trajectories_approx.mat'); 
+load('..\Dataset\rome_taxicab\traject_coord_approx.mat');
+load('..\Dataset\rome_taxicab\trajectories_approx.mat'); 
 
-load('C:\Users\sy0378.STUDENTS\Dropbox\Sourabh Yadav\HMM\data\trajectory_obfuscation\e150\obf_mat.mat')
+load('..\HMM\data\trajectory_obfuscation\e150\obf_mat.mat')
 % Extract the relevant columns (Node_ID, Latitude, Longitude)
 nodes_data = table2array(df_nodes_big(:, 1:3));
 node_lat_x = df_nodes.x;
 node_lon_y = df_nodes.y;
 
 %% New Nodes Dataset (Xinpeng's Dataset)
-new_nodes_df = readtable('./Dataset/node.csv');
+new_nodes_df = readtable('../Dataset/node.csv');
 newColumnOrder = {'node', 'lat', 'lng'};
 new_nodes_df = new_nodes_df(:,newColumnOrder);
 new_nodes_df = renamevars(new_nodes_df, 'lat', 'y');
 new_nodes_df = renamevars(new_nodes_df, 'lng', 'x');
 new_nodes_df.node(new_nodes_df.node == 0) = 50000;
 
-new_edges_df = readtable('./Dataset/edge_weight.csv');
+new_edges_df = readtable('../Dataset/edge_weight.csv');
 new_edges_df.s_node(new_edges_df.s_node == 0) = 50000;
 new_edges_df.e_node(new_edges_df.e_node == 0) = 50000;
 
@@ -74,7 +77,7 @@ nodes_y = new_df_nodes.y;
 new_node_ids = new_nodes_data(:,1);
 
 %% New Trajectories from new Dataset (Xinpeng's Dataset)
-trajectoryDataset = readtable('./Dataset/matching_result.csv');
+trajectoryDataset = readtable('../Dataset/matching_result.csv');
 trajectoryStrings = trajectoryDataset.Node_list;
 newTrajectories = cell(length(trajectoryStrings), 1);
 
@@ -152,11 +155,11 @@ prior_distribution = node_count/totalNodesEntireTrajectories;        % Stores Pr
 % end
 
 % load('./Dataset/obfuscated_traj.mat')
-load('C:\Users\sy0378.STUDENTS\Dropbox\Sourabh Yadav\HMM\data\trajectory_obfuscation\e50\obfuscated_traj.mat')
+% load('C:\Users\sy0378.STUDENTS\Dropbox\Sourabh Yadav\HMM\data\trajectory_obfuscation\e50\obfuscated_traj.mat')
 
 %% Utility Loss
 
-pois = readtable('./Dataset/pois.csv');
+pois = readtable('../Dataset/pois.csv');
 pois = table2array(pois(:,1));
 utility_loss_traj_whole = {};
 new_pois = intersect(new_node_ids, pois);
