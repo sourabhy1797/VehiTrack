@@ -1,0 +1,5 @@
+function result = KME_calculation(x,y)
+x = cell2mat(x)
+sigma = 1;
+result = exp(-((x - y).^2) / (2 * sigma^2));
+end

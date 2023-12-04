@@ -1,0 +1,130 @@
+addpath('./func'); 
+addpath('./func/haversine/'); 
+
+
+%% HMM model
+% load('.\data\obf_matrix.mat'); 
+% load('.\data\obfuscated_traj.mat'); 
+% load('.\data\new_traj.mat'); 
+% new_nodes_df = csvread('.\data\new_nodes_df.csv'); 
+
+% load('.\data\trajectory_obfuscation\e100\new_obf_nodes.mat');
+load('.\data\trajectory_obfuscation\e150\obf_mat.mat'); 
+load('.\data\trajectory_obfuscation\e150\obfuscated_traj.mat'); 
+load('.\data\trajectory_obfuscation\e150\new_traj.mat'); 
+new_nodes_df = csvread('.\data\new_nodes_df.csv'); 
+matrix = readmatrix('.\data\transition.xlsx'); 
+load('.\data\trans_matrix.mat'); 
+
+
+
+node_id = new_nodes_df(:, 1)+1;
+
+trans_matrix_ = trans_matrix(node_id, node_id); 
+
+trans_matrix_ = full(trans_matrix_); 
+
+
+% trans_matrix = sparse(matrix(:, 1)+1, matrix(:, 2)+1, matrix(:, 3)); 
+EIE_HMM = zeros(100, 1); 
+EIE_TCA = zeros(100, 1); 
+trans_matrix_ = trans_matrix_ + 0.0001; 
+
+for i = 1:1:size(trans_matrix_, 1)
+    trans_matrix_(i, :) = trans_matrix_(i, :)/sum(trans_matrix_(i, :)); 
+end
+
+states = 1:size(node_id, 1); 
+
+
+%% HMM 
+for i = 1:1:100
+    obf_loc = []; 
+    for j = 1:1:size(obfuscated_traj{i}, 2)
+        obf_loc = [obf_loc, find(new_nodes_df == obfuscated_traj{i}{j})]; 
+    end
+    real_loc = []; 
+    for j = 1:1:size(new_traj{i}, 2)
+        real_loc = [real_loc, find(new_nodes_df == new_traj{i}(j))]; 
+    end
+
+    est_loc = hmmviterbi(obf_loc, trans_matrix_, z_vector);
+
+    for j = 1:1:size(obfuscated_traj{i}, 2)
+        real_x(1, j) = new_nodes_df(real_loc(1, j), 2);
+        real_y(1, j) = new_nodes_df(real_loc(1, j), 3);
+        obf_x(1, j) = new_nodes_df(obf_loc(1, j), 2);
+        obf_y(1, j) = new_nodes_df(obf_loc(1, j), 3);
+
+
+        est_x(1, j) = new_nodes_df(est_loc(1, j), 2);
+        est_y(1, j) = new_nodes_df(est_loc(1, j), 3);
+
+        
+        [km, ~,  ~] = haversine([est_x(1, j), est_y(1, j)], [real_x(1, j), real_y(1, j)]); 
+        EIE_HMM(i, 1) = EIE_HMM(i, 1) + km; 
+    end
+    EIE_HMM(i, 1) = EIE_HMM(i, 1)/size(obfuscated_traj{i}, 2); 
+end
+
+
+%% TCA
+obf_loc = []; 
+real_loc = []; 
+
+for i = 1:1:100
+    for j = 1:1:size(obfuscated_traj{i}, 2)
+        obf_loc = [obf_loc, obfuscated_traj{i}{j}]; 
+    end
+    for j = 1:1:size(new_traj{i}, 2)
+        real_loc = [real_loc, find(new_nodes_df == new_traj{i}(j))]; 
+    end
+end
+
+[trans_matrix_1, z_vector1] = hmmestimate(obf_loc, real_loc);
+trans_matrix_1 = trans_matrix_1 + 0.02; 
+
+for i = 1:1:100
+    i
+    est_loc1 = hmmviterbi(obf_loc, trans_matrix_1, z_vector);
+    for j = 1:1:size(obfuscated_traj{i}, 2)
+        real_x(1, j) = new_nodes_df(real_loc(1, j), 2);
+        real_y(1, j) = new_nodes_df(real_loc(1, j), 3);
+        obf_x(1, j) = new_nodes_df(obf_loc(1, j), 2);
+        obf_y(1, j) = new_nodes_df(obf_loc(1, j), 3);
+        est_x1(1, j) = new_nodes_df(est_loc1(1, j), 2);
+        est_y1(1, j) = new_nodes_df(est_loc1(1, j), 3);
+
+        [km1, ~,  ~] = haversine([est_x1(1, j), est_y1(1, j)], [real_x(1, j), real_y(1, j)]);
+        EIE_TCA(i, 1) = EIE_TCA(i, 1) + km1; 
+    end
+    EIE_TCA(i, 1) = EIE_TCA(i, 1)/size(obfuscated_traj{i}, 2); 
+end
+
+
+% Original_Trajectory = [17402,  19698,  6187,  7004,  1901,  19703,  19703,  1901,  19705,  19680,  19680,  25952,  25528,  19682,  30686,  30687];
+% Obfuscated_Trajectory = [1203, 1263, 1251,  902, 1196, 640, 1231, 283, 745, 288, 453, 1498, 1414, 892, 1711, 282];
+% VehiTrack_after_phase1 = [4346,  7006,  16187,  4351,  19255,  4751,  22485,  5395,  19330,  4351,  4751,  4737,  23697,  25530,  23694,  7329]; 
+% Vehitrack_RNN_Results = [17402,  19702,  7004,  7004,  19703,  19703,  19705,  19705,  19705,  6818,  19705,  7345,  25952,  19682,  19682,  19682];
+% 
+% for i = 1:1:16
+%     Original_Trajectory_loc(i, 1) = new_nodes_df(find(new_nodes_df == Original_Trajectory(i)), 2); 
+%     Original_Trajectory_loc(i, 2) = new_nodes_df(find(new_nodes_df == Original_Trajectory(i)), 3);
+% 
+%     Obfuscated_Trajectory_loc(i, 1) = new_nodes_df(find(new_nodes_df == Obfuscated_Trajectory(i)), 2); 
+%     Obfuscated_Trajectory_loc(i, 2) = new_nodes_df(find(new_nodes_df == Obfuscated_Trajectory(i)), 3);
+% 
+%     VehiTrack_after_phase1_loc(i, 1) = new_nodes_df(find(new_nodes_df == VehiTrack_after_phase1(i)), 2); 
+%     VehiTrack_after_phase1_loc(i, 2) = new_nodes_df(find(new_nodes_df == VehiTrack_after_phase1(i)), 3);
+% 
+%     Vehitrack_RNN_Results_loc(i, 1) = new_nodes_df(find(new_nodes_df == Vehitrack_RNN_Results(i)), 2); 
+%     Vehitrack_RNN_Results_loc(i, 2) = new_nodes_df(find(new_nodes_df == Vehitrack_RNN_Results(i)), 3);
+% end
+% 
+% plot(Original_Trajectory_loc(:, 1), Original_Trajectory_loc(:, 2), 'o'); 
+% hold on;
+% plot(Obfuscated_Trajectory_loc(:, 1), Obfuscated_Trajectory_loc(:, 2), 'o'); 
+% hold on;
+% plot(VehiTrack_after_phase1_loc(:, 1), VehiTrack_after_phase1_loc(:, 2), 'o'); 
+% hold on;
+% plot(Vehitrack_RNN_Results_loc(:, 1), Vehitrack_RNN_Results_loc(:, 2), 'o'); 
